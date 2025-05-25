@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ERC-20 Token Demo</title>
+</head>
+<body>
+  <h1>ERC-20 Token Demo</h1>
+  <button onclick="connectWallet()">Connect Wallet</button>
+  <p id="account"></p>
+
+  <button onclick="getTokenDetails()">Load Token Info</button>
+  <p id="tokenInfo"></p>
+
+  <button onclick="getTokenBalance()">Check Balance</button>
+  <p id="balance"></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.min.js"></script>
+  <script>
+    let provider, signer, contract;
+    const tokenAddress = "0xc33f43143258d563384e171362581ed6a7b141ce"; // your token
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("MetaMask not detected. Please install MetaMask.");
+        return;
+      }
+
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+
+      const address = await signer.getAddress();
+      document.getElementById("account").innerText = "Connected: " + address;
+
+      const abi = await (await fetch("abi.json")).json();
+      contract = new ethers.Contract(tokenAddress, abi, signer);
+    }
+
+    async function getTokenDetails() {
+      if (!contract) return alert("Connect wallet first");
+
+      const name = await contract.name();
+      const symbol = await contract.symbol();
+      const decimals = await contract.decimals();
+
+      document.getElementById("tokenInfo").innerText = `Token: ${name} (${symbol}), Decimals: ${decimals}`;
+    }
+
+    async function getTokenBalance() {
+      if (!contract) return alert("Connect wallet first");
+
+      const address = await signer.getAddress();
+      const rawBalance = await contract.balanceOf(address);
+      const decimals = await contract.decimals();
+
+      const formatted = ethers.formatUnits(rawBalance, decimals);
+      document.getElementById("balance").innerText = `Balance: ${formatted}`;
+    }
+  </script>
+</body>
+</html>
