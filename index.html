@@ -1,60 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ERC-20 Token Demo</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.min.js"></script>
-  </head>
-  <body class="bg-gray-900 text-white flex items-center justify-center h-screen">
-    <div class="text-center space-y-6 p-8 max-w-md w-full bg-gray-800 rounded-xl shadow-2xl">
-      <h1 class="text-3xl font-bold text-indigo-400">🚀 ERC-20 Token Demo</h1>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ERC-20 Token Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.min.js"></script>
+</head>
+<body class="bg-gray-950 text-white min-h-screen flex flex-col items-center justify-center px-4">
+  <div class="max-w-xl w-full bg-gray-900 p-6 rounded-xl shadow-lg space-y-6">
+    <h1 class="text-3xl font-bold text-indigo-400 text-center">ERC-20 Token Dashboard</h1>
 
-      <button
-        onclick="connect()"
-        class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-6 rounded-full transition"
-      >
-        Connect Wallet
-      </button>
-      <p id="account" class="text-sm text-green-300"></p>
-
-      <button
-        onclick="getBalance()"
-        class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full transition"
-      >
-        Check Balance
-      </button>
-      <p id="balance" class="text-yellow-300 text-lg"></p>
+    <!-- Connect Wallet -->
+    <div class="text-center">
+      <button onclick="connect()" class="bg-indigo-600 hover:bg-indigo-700 px-6 py-2 rounded-lg text-white font-semibold transition">Connect Wallet</button>
+      <p id="account" class="mt-2 text-sm text-gray-300"></p>
     </div>
 
-    <script>
-      let provider, signer, contract;
-      const tokenAddress = "0xc33f43143258d563384e171362581ed6a7b141ce";
+    <!-- Balance -->
+    <div class="space-y-2">
+      <button onclick="getBalance()" class="w-full bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-semibold transition">Check Balance</button>
+      <p id="balance" class="text-lg text-green-300"></p>
+    </div>
 
-      async function connect() {
-        if (window.ethereum) {
-          provider = new ethers.BrowserProvider(window.ethereum);
-          signer = await provider.getSigner();
-          const account = await signer.getAddress();
-          document.getElementById("account").innerText = "Connected: " + account;
+    <!-- Send Tokens -->
+    <div class="space-y-2">
+      <h2 class="text-xl font-semibold text-indigo-300">Send Tokens</h2>
+      <input id="recipient" type="text" placeholder="Recipient Address" class="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 placeholder-gray-500"/>
+      <input id="amount" type="number" placeholder="Amount to Send" class="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 placeholder-gray-500"/>
+      <button onclick="sendTokens()" class="w-full bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-white font-semibold transition">Send Tokens</button>
+      <p id="sendStatus" class="text-sm text-blue-300"></p>
+    </div>
+  </div>
 
-          const response = await fetch("abi.json");
-          const abi = await response.json();
-          contract = new ethers.Contract(tokenAddress, abi, signer);
-        } else {
-          alert("MetaMask not found. Please install it.");
+  <script>
+    const tokenAddress = "0xc33f43143258d563384e171362581ed6a7b141ce"; // your token
+    const abiUrl = "https://raw.githubusercontent.com/chimoney/erc20-demo/main/abi.json"; // public ABI URL
+
+    let provider, signer, contract;
+
+    async function connect() {
+      try {
+        if (!window.ethereum) {
+          return alert("❌ MetaMask not detected. Please install MetaMask.");
         }
-      }
 
-      async function getBalance() {
-        if (!contract) return alert("Connect wallet first");
+        provider = new ethers.BrowserProvider(window.ethereum);
+        signer = await provider.getSigner();
+        const account = await signer.getAddress();
+        document.getElementById("account").innerText = "✅ Connected: " + account;
+
+        const abi = await fetch(abiUrl).then(res => res.json());
+        contract = new ethers.Contract(tokenAddress, abi, signer);
+      } catch (err) {
+        console.error("Connect error:", err);
+        alert("⚠️ Failed to connect wallet.");
+      }
+    }
+
+    async function getBalance() {
+      if (!contract) return alert("Please connect wallet first.");
+      try {
         const account = await signer.getAddress();
         const balance = await contract.balanceOf(account);
         const decimals = await contract.decimals();
-        const adjusted = balance / 10 ** decimals;
-        document.getElementById("balance").innerText = "Balance: " + adjusted;
+        const adjusted = balance / (10 ** decimals);
+        document.getElementById("balance").innerText = "💰 Balance: " + adjusted;
+      } catch (err) {
+        console.error(err);
+        alert("Failed to fetch balance.");
       }
-    </script>
-  </body>
+    }
+
+    async function sendTokens() {
+      if (!contract) return alert("Please connect wallet first.");
+      const to = document.getElementById("recipient").value.trim();
+      const amount = parseFloat(document.getElementById("amount").value.trim());
+      const status = document.getElementById("sendStatus");
+
+      if (!to || isNaN(amount) || amount <= 0) {
+        return (status.innerText = "❌ Invalid address or amount.");
+      }
+
+      try {
+        const decimals = await contract.decimals();
+        const rawAmount = ethers.parseUnits(amount.toString(), decimals);
+        const tx = await contract.transfer(to, rawAmount);
+        status.innerText = "⏳ Sending...";
+        await tx.wait();
+        status.innerText = "✅ Tokens sent!";
+      } catch (err) {
+        console.error(err);
+        status.innerText = "❌ Failed to send tokens.";
+      }
+    }
+  </script>
+</body>
 </html>
