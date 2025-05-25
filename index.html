@@ -1,61 +1,60 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <title>ERC-20 Token Demo</title>
-</head>
-<body>
-  <h1>ERC-20 Token Demo</h1>
-  <button onclick="connectWallet()">Connect Wallet</button>
-  <p id="account"></p>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ERC-20 Token Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.min.js"></script>
+  </head>
+  <body class="bg-gray-900 text-white flex items-center justify-center h-screen">
+    <div class="text-center space-y-6 p-8 max-w-md w-full bg-gray-800 rounded-xl shadow-2xl">
+      <h1 class="text-3xl font-bold text-indigo-400">🚀 ERC-20 Token Demo</h1>
 
-  <button onclick="getTokenDetails()">Load Token Info</button>
-  <p id="tokenInfo"></p>
+      <button
+        onclick="connect()"
+        class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-6 rounded-full transition"
+      >
+        Connect Wallet
+      </button>
+      <p id="account" class="text-sm text-green-300"></p>
 
-  <button onclick="getTokenBalance()">Check Balance</button>
-  <p id="balance"></p>
+      <button
+        onclick="getBalance()"
+        class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full transition"
+      >
+        Check Balance
+      </button>
+      <p id="balance" class="text-yellow-300 text-lg"></p>
+    </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.min.js"></script>
-  <script>
-    let provider, signer, contract;
-    const tokenAddress = "0xc33f43143258d563384e171362581ed6a7b141ce"; // your token
+    <script>
+      let provider, signer, contract;
+      const tokenAddress = "0xc33f43143258d563384e171362581ed6a7b141ce";
 
-    async function connectWallet() {
-      if (!window.ethereum) {
-        alert("MetaMask not detected. Please install MetaMask.");
-        return;
+      async function connect() {
+        if (window.ethereum) {
+          provider = new ethers.BrowserProvider(window.ethereum);
+          signer = await provider.getSigner();
+          const account = await signer.getAddress();
+          document.getElementById("account").innerText = "Connected: " + account;
+
+          const response = await fetch("abi.json");
+          const abi = await response.json();
+          contract = new ethers.Contract(tokenAddress, abi, signer);
+        } else {
+          alert("MetaMask not found. Please install it.");
+        }
       }
 
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-      provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
-
-      const address = await signer.getAddress();
-      document.getElementById("account").innerText = "Connected: " + address;
-
-      const abi = await (await fetch("abi.json")).json();
-      contract = new ethers.Contract(tokenAddress, abi, signer);
-    }
-
-    async function getTokenDetails() {
-      if (!contract) return alert("Connect wallet first");
-
-      const name = await contract.name();
-      const symbol = await contract.symbol();
-      const decimals = await contract.decimals();
-
-      document.getElementById("tokenInfo").innerText = `Token: ${name} (${symbol}), Decimals: ${decimals}`;
-    }
-
-    async function getTokenBalance() {
-      if (!contract) return alert("Connect wallet first");
-
-      const address = await signer.getAddress();
-      const rawBalance = await contract.balanceOf(address);
-      const decimals = await contract.decimals();
-
-      const formatted = ethers.formatUnits(rawBalance, decimals);
-      document.getElementById("balance").innerText = `Balance: ${formatted}`;
-    }
-  </script>
-</body>
+      async function getBalance() {
+        if (!contract) return alert("Connect wallet first");
+        const account = await signer.getAddress();
+        const balance = await contract.balanceOf(account);
+        const decimals = await contract.decimals();
+        const adjusted = balance / 10 ** decimals;
+        document.getElementById("balance").innerText = "Balance: " + adjusted;
+      }
+    </script>
+  </body>
 </html>
